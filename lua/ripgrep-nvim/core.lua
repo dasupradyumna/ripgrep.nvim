@@ -1,51 +1,15 @@
 ---------------------------------------- CORE FUNCTIONALITY ----------------------------------------
 
+local Worker = require 'ripgrep-nvim.worker'
+
 local M = {}
 
----@class RipGrepNvimSearchJob
-M.job = {
-  ---@type vim.SystemObj? vim.system job handle (when active)
-  handle = nil,
-  ---@type string[] a list of results output by the job
-  results = {},
-}
-
----kills the job (when active) using SIGTERM
-function M.job:kill()
-  if self.handle then self.handle:kill 'SIGTERM' end
-end
-
----clears old results and starts a new search job
----@param search_pattern string target search pattern
----@param directory string target directory to recursively search
-function M.job:create(search_pattern, directory)
-  self.results = {}
-
-  -- constructs a search command
-  local config_command = require('ripgrep-nvim.config').options.command
-  local command = vim.deepcopy(config_command.args)
-  table.insert(command, 1, config_command.exe)
-  vim.list_extend(command, { search_pattern, directory })
-
-  -- starts a new search process
-  self.handle = vim.system(command, {
-    stdout = function(err, data)
-      if err then error(err) end -- backup to catch unexpected errors
-      if not data then return end
-
-      vim.list_extend(self.results, vim.split(data:gsub('\r\n', '\n'), '\n', { trimempty = true }))
-    end,
-  }, function() self.handle = nil end)
-end
-
----@class RipGrepNvimSearchUI
+---@class RipgrepNvimSearchUI
 M.ui = {}
----@class RipGrepNvimSearchUIBuffer
----@field id integer? results buffer number (if exists)
+
+---@class RipgrepNvimSearchUIBuffer
+---@field id integer? results buffer number (if it exists)
 M.ui.buffer = {}
----@class RipGrepNvimSearchUIFloat
----@field id integer? results floating window number (if exists)
-M.ui.float = {}
 
 ---temporarily unlocks and writes entries to the buffer
 ---@param lines string[] list of entries to write
@@ -57,9 +21,21 @@ function M.ui.buffer:write(lines, first, last)
   vim.bo[self.id].modifiable = false
 end
 
+---updates the buffer content with matches from search job
+---@param matches string[] list of matches
+function M.ui.buffer.update(matches)
+  M.ui.buffer:write(matches, -1)
+
+  -- HACK: remove first placeholder line if atleast one result is found
+  if M.job.no_results and not vim.tbl_isempty(matches) then
+    M.job.no_results = false
+    M.ui.buffer:write({}, 0, 1)
+  end
+end
+
 M.ui.buffer = setmetatable(M.ui.buffer, {
   ---indexing metatable for buffer IDs
-  ---@param self RipGrepNvimSearchUIBuffer
+  ---@param self RipgrepNvimSearchUIBuffer
   ---@param field 'id' only this value is valid
   ---@return integer
   __index = function(self, field)
@@ -81,6 +57,10 @@ M.ui.buffer = setmetatable(M.ui.buffer, {
   end,
 })
 
+---@class RipgrepNvimSearchUIFloat
+---@field id integer? results floating window number (if it exists)
+M.ui.float = {}
+
 ---sets the floating window title
 ---@param title string title string
 function M.ui.float:set_title(title)
@@ -90,16 +70,16 @@ end
 
 M.ui.float = setmetatable(M.ui.float, {
   ---indexing metatable for floating window IDs
-  ---@param self RipGrepNvimSearchUIFloat
+  ---@param self RipgrepNvimSearchUIFloat
   ---@param field 'id' only this value is valid
   ---@return integer
   __index = function(self, field)
     if field ~= 'id' then return end
 
     local row, height, col, width = unpack(vim.tbl_flatten(vim.tbl_map(function(size)
-      local c_size = size * 0.9
-      local c_pos = (size - c_size) / 2 - 1
-      return { math.floor(c_pos), math.floor(c_size) }
+      local c_size = math.floor(size * 0.9)
+      local c_pos = math.floor((size - c_size) / 2 - 1)
+      return { c_pos, c_size }
     end, { vim.o.lines, vim.o.columns })))
     self.id = vim.api.nvim_open_win(M.ui.buffer.id, true, {
       relative = 'editor',
@@ -118,14 +98,60 @@ M.ui.float = setmetatable(M.ui.float, {
   end,
 })
 
+---@class RipgrepNvimSearchJob
+M.job = {
+  ---@type vim.SystemObj? vim.system job handle (when active)
+  handle = nil,
+  ---@type string[] a list of results output by the job
+
+  ---@type RipgrepNvimWorker
+  worker = Worker(M.ui.buffer.update),
+
+  ---@type boolean indicates if not even one result has been output
+  no_results = true,
+}
+
+---kills the job (when active) using SIGTERM
+function M.job:stop()
+  if self.handle then self.handle:kill 'SIGTERM' end
+end
+
+---clears old results and starts a new search job
+---@param search_pattern string target search pattern
+---@param directory string target directory to recursively search
+function M.job:start(search_pattern, directory)
+  self.worker:start()
+
+  -- constructs a search command
+  -- TODO: extract into a command creator function
+  local config_command = require('ripgrep-nvim.config').options.command
+  local command = vim.deepcopy(config_command.args)
+  table.insert(command, 1, config_command.exe)
+  vim.list_extend(command, { search_pattern, directory })
+
+  -- starts a new search process
+  self.handle = vim.system(command, {
+    stdout = function(err, data)
+      if err then error(err) end -- backup to catch unexpected errors
+      if not data then return end
+
+      self.worker:add(vim.split(data:gsub('\r\n', '\n'), '\n', { trimempty = true }))
+    end,
+  }, function()
+    self.handle = nil
+    self.worker:stop()
+    self.no_results = true
+  end)
+end
+
 ---search for a custom string received from user input using specified search options
----@param opts RipGrepNvimSearchOptions? search options
+---@param opts RipgrepNvimSearchOptions? search options
 function M.search(opts)
   opts = opts or {}
   opts.directory = opts.directory or vim.loop.cwd()
 
   -- kill existing job if any
-  M.job:kill()
+  M.job:stop()
 
   -- clear previous search results
   M.ui.buffer:write { '-- No matches found --' }
@@ -133,15 +159,11 @@ function M.search(opts)
   vim.ui.input({ prompt = 'Search pattern: ' }, function(pattern)
     if not pattern or #pattern == 0 then return end
 
-    M.job:create(pattern, opts.directory)
+    M.job:start(pattern, opts.directory)
 
     -- update the results floating window
     vim.api.nvim_win_set_buf(M.ui.float.id, M.ui.buffer.id)
     M.ui.float:set_title((' Search Results: %s '):format(opts.directory))
-
-    -- write the search results
-    M.job.handle:wait()
-    if not vim.tbl_isempty(M.job.results) then M.ui.buffer:write(M.job.results) end
   end)
 end
 

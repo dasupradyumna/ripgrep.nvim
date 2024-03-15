@@ -10,3 +10,9 @@ vim.api.nvim_create_autocmd('WinClosed', {
     if data.match == tostring(rawget(float, 'id')) then float.id = nil end
   end,
 })
+
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  desc = 'Clean up worker handle just before exit',
+  group = 'ripgrep_nvim',
+  callback = function() require('ripgrep-nvim.core').job.worker:close() end,
+})

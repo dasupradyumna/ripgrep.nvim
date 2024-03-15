@@ -2,7 +2,7 @@
 
 local M = {}
 
----@type RipGrepNvimConfig plugin default configuration
+---@type RipgrepNvimConfig plugin default configuration
 local defaults = {
   command = {
     exe = 'rg',
@@ -18,11 +18,11 @@ local defaults = {
   format = '^(.+):(%d+):.+$',
 }
 
----@type RipGrepNvimConfig currently active configuration
+---@type RipgrepNvimConfig currently active configuration
 M.options = {} ---@diagnostic disable-line:missing-fields
 
 ---merge the custom user options with the plugin default configuration
----@param user_opts RipGrepNvimUserOptions custom user options
+---@param user_opts RipgrepNvimUserOptions custom user options
 function M.apply(user_opts)
   -- TODO: validate `user_opts`
   M.options = vim.tbl_deep_extend('force', defaults, user_opts)
