@@ -1,5 +1,6 @@
 ---------------------------------------- CORE FUNCTIONALITY ----------------------------------------
 
+local util = require 'ripgrep-nvim.util'
 local Worker = require 'ripgrep-nvim.worker'
 
 local M = {}
@@ -8,13 +9,13 @@ local M = {}
 M.ui = {}
 
 ---@class RipgrepNvimSearchUIBuffer
----@field id integer? results buffer number (if it exists)
+---@field id? integer results buffer number (if it exists)
 M.ui.buffer = {}
 
 ---temporarily unlocks and writes entries to the buffer
 ---@param lines string[] list of entries to write
----@param first integer? start of writing range (defaults to 0)
----@param last integer? end of writing range (defaults to -1)
+---@param first? integer start of writing range (defaults to 0)
+---@param last? integer end of writing range (defaults to -1)
 function M.ui.buffer:write(lines, first, last)
   vim.bo[self.id].modifiable = true
   vim.api.nvim_buf_set_lines(self.id, first or 0, last or -1, true, lines)
@@ -58,7 +59,7 @@ M.ui.buffer = setmetatable(M.ui.buffer, {
 })
 
 ---@class RipgrepNvimSearchUIFloat
----@field id integer? results floating window number (if it exists)
+---@field id? integer results floating window number (if it exists)
 M.ui.float = {}
 
 ---sets the floating window title
@@ -102,9 +103,8 @@ M.ui.float = setmetatable(M.ui.float, {
 M.job = {
   ---@type vim.SystemObj? vim.system job handle (when active)
   handle = nil,
-  ---@type string[] a list of results output by the job
 
-  ---@type RipgrepNvimWorker
+  ---@type RipgrepNvimWorker buffer update worker
   worker = Worker(M.ui.buffer.update),
 
   ---@type boolean indicates if not even one result has been output
@@ -145,8 +145,42 @@ function M.job:start(search_pattern, directory)
 end
 
 ---search for a custom string received from user input using specified search options
----@param opts RipgrepNvimSearchOptions? search options
+---@param opts? RipgrepNvimSearchOptions search options
 function M.search(opts)
+  -- validate the search options
+  local message = util.validate_arguments {
+    {
+      'opts',
+      { opts },
+      function(name, value)
+        if type(value) == 'nil' then return end
+        if type(value) ~= 'table' then
+          return ('Search options "%s" must be a table'):format(name)
+        end
+
+        local valid_fields = { 'directory' }
+        for field, _ in pairs(value) do
+          if not vim.list_contains(valid_fields, field) then
+            return ('Unknown field "%s" in "%s". Valid fields: %s'):format(
+              field,
+              name,
+              vim.inspect(valid_fields)
+            )
+          end
+        end
+      end,
+    },
+    { 'opts.directory', { opts, 'directory' }, { 'string', 'nil' } },
+  }
+  if message then
+    util.notify:send('E', {
+      '[ripgrep.nvim] ERROR: Invalid search options; search aborted!\n',
+      message,
+    })
+    return
+  end
+
+  -- use defaults for missing arguments
   opts = opts or {}
   opts.directory = opts.directory or vim.loop.cwd()
 

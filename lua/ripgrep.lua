@@ -3,7 +3,7 @@
 local M = {}
 
 ---plugin setup function
----@param opts RipgrepNvimUserOptions custom user options for plugin setup
+---@param opts? RipgrepNvimUserOptions custom user options for plugin setup
 function M.setup(opts) require('ripgrep-nvim.config').apply(opts) end
 
 ---search for a string in the current working directory

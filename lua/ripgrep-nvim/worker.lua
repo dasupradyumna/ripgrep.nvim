@@ -1,19 +1,11 @@
 ---------------------------------------- ASYNCHRONOUS WORKER ---------------------------------------
 
----checks if the argument is a callable object
----@param object any target object
----@return boolean
-local function is_callable(object)
-  return type(object) == 'function'
-    or (type(object) == 'table' and type(getmetatable(object).__call) == 'function')
-end
-
 ---constructs a new instance of a worker
 ---@param callback fun(...: any)
 ---@return RipgrepNvimWorker
 return function(callback)
-  -- ensure callback is callable
-  if not is_callable(callback) then
+  -- ensure that callback is callable
+  if not vim.is_callable(callback) then
     error 'ripgrep.nvim: Worker constructor argument `callback` must be a callable object'
   end
 
