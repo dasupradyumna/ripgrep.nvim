@@ -3,6 +3,7 @@
 ---constructs a new instance of a worker
 ---@param callback fun(...: any)
 ---@return RipgrepNvimWorker
+---@nodiscard
 return function(callback)
   -- ensure that callback is callable
   if not vim.is_callable(callback) then
@@ -12,7 +13,7 @@ return function(callback)
   ---@class RipgrepNvimWorker
   local Worker = {}
 
-  ---@class __RipgrepNvimWorkerPrivate
+  ---@class RipgrepNvimWorkerPrivate
   ---@field callback fun(...: any) work to be done by the worker
   ---@field jobs any[][] list of jobs for the worker to process
   ---@field lock boolean lock for critical sections in worker loop
