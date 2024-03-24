@@ -39,10 +39,7 @@ return function(callback)
 
     if vim.tbl_isempty(__Worker.jobs) then
       -- stop the timer if no jobs are available and worker has been stopped
-      if __Worker.stop_when_no_jobs then
-        __Worker.stop_when_no_jobs = false
-        __Worker.timer:stop()
-      end
+      if __Worker.stop_when_no_jobs then Worker:kill() end
       __Worker.lock = false
       return
     end
@@ -59,6 +56,12 @@ return function(callback)
 
   ---stop the worker and end the loop after all existing jobs are processed
   function Worker:stop() __Worker.stop_when_no_jobs = true end
+
+  ---kill the worker and end the loop immediately
+  function Worker:kill()
+    __Worker.stop_when_no_jobs = false
+    __Worker.timer:stop()
+  end
 
   ---clean up internal timer handle
   function Worker:close() __Worker.timer:close() end

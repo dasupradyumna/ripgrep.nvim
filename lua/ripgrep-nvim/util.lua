@@ -39,7 +39,7 @@ function M.validate_arguments(specs)
   for _, spec in ipairs(specs) do
     local name = spec[1] -- name of the parameter
     local value = spec[2] -- argument list in the same format as `vim.tbl_get` parameters
-    if #value == 1 then
+    if vim.tbl_count(value) == 1 then
       value = value[1] -- no indices provided
     else
       value = vim.tbl_get(unpack(value))
