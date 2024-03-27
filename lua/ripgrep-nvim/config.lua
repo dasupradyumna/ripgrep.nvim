@@ -87,7 +87,7 @@ function M.apply(opts)
     },
   }
   if message then
-    local lines = { '[ripgrep.nvim] ERROR: User options could not be applied; setup failed!' }
+    local lines = { 'ERROR: User options could not be applied; setup failed!' }
     vim.list_extend(lines, vim.split(debug.traceback('', 2), '\n'), 2, 4)
     table.insert(lines, '\n' .. message)
     util.notify:send('E', lines)

@@ -86,10 +86,7 @@ function M.search(opts)
     { 'opts.directory', { opts, 'directory' }, { 'string', 'nil' } },
   }
   if message then
-    util.notify:send('E', {
-      '[ripgrep.nvim] ERROR: Invalid search options; search aborted!\n',
-      message,
-    })
+    util.notify:send('E', { 'ERROR: Invalid search options; search aborted!\n', message })
     return
   end
 

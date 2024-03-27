@@ -18,6 +18,7 @@ M.notify = {
 ---@param ... any values to fill in format specifiers
 -- TODO: support nvim-notify
 function M.notify:send(level, message, ...)
+  message[1] = '[ripgrep.nvim] ' .. message[1]
   vim.api.nvim_echo({ { table.concat(message, '\n'):format(...), self.level[level] } }, true, {})
 end
 

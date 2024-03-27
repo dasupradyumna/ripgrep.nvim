@@ -7,7 +7,7 @@ local ripgrep = require 'ripgrep'
 vim.api.nvim_create_user_command('RGSearch', ripgrep.search_cwd, {})
 vim.api.nvim_create_user_command(
   'RGSearchDirectory',
-  function(data) ripgrep.search_directory(data.args) end,
+  function(data) ripgrep.search_dir(data.args) end,
   { complete = 'dir', nargs = 1 }
 )
 

@@ -11,6 +11,6 @@ function M.search_cwd() require('ripgrep-nvim.core').search() end
 
 ---search for a string in the specified target directory
 ---@param target string path to the target directory
-function M.search_directory(target) require('ripgrep-nvim.core').search { directory = target } end
+function M.search_dir(target) require('ripgrep-nvim.core').search { directory = target } end
 
 return M
