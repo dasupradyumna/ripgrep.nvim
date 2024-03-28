@@ -1,58 +1,125 @@
 -------------------------------------------- UI BUFFERS --------------------------------------------
 
----@class RipgrepNvimSearchUIBuffer
----@field id? integer results buffer number (if it exists)
----@field no_results? boolean indicates if not even one result has been output
-local Buffer = setmetatable({ no_results = true }, {
-  ---indexing metatable for buffer IDs
-  ---@param self RipgrepNvimSearchUIBuffer
-  ---@param field 'id' only this value is valid
-  ---@return integer
-  __index = function(self, field)
-    if field ~= 'id' then return end
+local M = {}
 
+---writes entries to specified buffer
+---@param buffer integer target buffer ID
+---@param lines string[] list of entries to write
+---@param first? integer start of writing range (defaults to 0)
+---@param last? integer end of writing range (defaults to -1)
+local function write(buffer, lines, first, last)
+  vim.api.nvim_buf_set_lines(buffer, first or 0, last or -1, true, lines)
+end
+
+---@class RipgrepNvimPromptBuffer
+---@field id? integer prompt buffer ID
+---@field prefix string prompt prefix
+M.prompt = setmetatable({ prefix = ' Pattern: ' }, {
+  ---automatically create buffer if it does not exist
+  ---@param self RipgrepNvimPromptBuffer
+  ---@return integer # created buffer ID
+  __index = function(self)
     self.id = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_create_autocmd('BufWipeout', {
+      desc = 'Reset the prompt buffer handle',
+      group = 'ripgrep_nvim',
+      buffer = self.id,
+      callback = function() self.id = nil end,
+    })
 
-    vim.bo[self.id].buftype = 'nofile'
-    vim.bo[self.id].modifiable = false
-
-    vim.keymap.set('n', 'q', '<Cmd>quit<CR>', { buffer = self.id })
-
-    vim.api.nvim_create_autocmd(
-      'BufWipeout',
-      { group = 'ripgrep_nvim', buffer = self.id, callback = function() self.id = nil end }
-    )
+    vim.bo[self.id].buftype = 'prompt'
+    vim.fn.prompt_setprompt(self.id, self.prefix)
+    vim.keymap.set('i', '<CR>', '', { buffer = self.id }) -- disable <Enter> prompt callback
 
     return self.id
   end,
 })
 
----temporarily unlocks and writes entries to the buffer
----@param lines string[] list of entries to write
----@param first? integer start of writing range (defaults to 0)
----@param last? integer end of writing range (defaults to -1)
-function Buffer:write(lines, first, last)
-  vim.bo[self.id].modifiable = true
-  vim.api.nvim_buf_set_lines(self.id, first or 0, last or -1, true, lines)
-  vim.bo[self.id].modifiable = false
+---setup the prompt buffer with autocommands and keymaps
+---@param directory string search directory
+---@param close_ui fun() closes the UI layout
+function M.prompt:setup(directory, close_ui)
+  local job = require 'ripgrep-nvim.job'
+
+  -- watch changes in prompt text
+  vim.api.nvim_create_autocmd({ 'TextChangedI', 'TextChangedP' }, {
+    desc = 'Watch the text changes in prompt buffer for processing',
+    group = 'ripgrep_nvim',
+    buffer = self.id,
+    callback = function()
+      job:kill()
+      M.results:reset()
+
+      local pattern = vim.api.nvim_get_current_line():sub(self.prefix:len() + 1)
+      if pattern == '' then return end
+
+      job:spawn(pattern, directory, M.results.update)
+    end,
+  })
+
+  -- keymaps to exit search
+  local function exit()
+    job:kill()
+    self:reset()
+    M.results:reset()
+    close_ui()
+  end
+  vim.keymap.set('i', '<Esc>', exit, { buffer = self.id })
+  vim.keymap.set('i', '<C-C>', exit, { buffer = self.id })
+
+  -- TODO: keymaps for navigating entries
 end
+
+---reset the prompt buffer state
+function M.prompt:reset()
+  write(self.id, {})
+  vim.bo[self.id].modified = false
+end
+
+---@class RipgrepNvimResultsBuffer
+---@field id? integer results buffer ID
+---@field empty boolean indicates if no results have been found
+M.results = setmetatable({ empty = true }, {
+  ---automatically create buffer if it does not exist
+  ---@param self RipgrepNvimResultsBuffer
+  ---@return integer # created buffer ID
+  __index = function(self)
+    self.id = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_create_autocmd('BufWipeout', {
+      desc = 'Reset the results buffer handle',
+      group = 'ripgrep_nvim',
+      buffer = self.id,
+      callback = function()
+        self.id = nil
+        self.empty = true
+      end,
+    })
+
+    vim.bo[self.id].buftype = 'nofile'
+
+    return self.id
+  end,
+})
 
 ---updates the buffer content with matches from search job
 ---@param matches string[] list of matches
-function Buffer.update(matches)
-  Buffer:write(matches, -1)
+function M.results.update(matches)
+  if vim.tbl_isempty(matches) then return end
 
-  -- HACK: remove first placeholder line if atleast one result is found
-  if Buffer.no_results and not vim.tbl_isempty(matches) then
-    Buffer.no_results = false
-    Buffer:write({}, 0, 1)
+  local self = M.results
+  local start = -1
+  if self.empty then
+    self.empty = false
+    start = 0
   end
+
+  write(self.id, matches, start)
 end
 
 ---resets the buffer contents
-function Buffer:reset()
-  Buffer:write { '-- No matches found --' }
-  Buffer.no_results = true
+function M.results:reset()
+  write(self.id, {})
+  self.empty = true
 end
 
-return Buffer
+return M
