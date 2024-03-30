@@ -46,15 +46,18 @@ function M.prompt:setup(directory)
 
   -- keymaps to exit search
   local function exit()
+    require('ripgrep-nvim.ui.layout').close()
     job:kill()
     self:reset()
-    M.results:reset()
-    require('ripgrep-nvim.ui.layout').close()
+    M.temp:wipe()
+    vim.cmd.stopinsert()
   end
   vim.keymap.set('i', '<Esc>', exit, { buffer = id.buffer.prompt })
   vim.keymap.set('i', '<C-C>', exit, { buffer = id.buffer.prompt })
 
-  -- TODO: keymaps for navigating entries
+  -- keymaps to navigate entries
+  vim.keymap.set('i', '<C-N>', function() M.results:choose(1) end, { buffer = id.buffer.prompt })
+  vim.keymap.set('i', '<C-P>', function() M.results:choose(-1) end, { buffer = id.buffer.prompt })
 end
 
 ---reset the prompt buffer state
@@ -63,29 +66,74 @@ function M.prompt:reset()
   vim.bo[id.buffer.prompt].modified = false
 end
 
+---@class RipgrepNvimTempsHandler
+---@field buffers integer[] list of temporary buffer IDs to wipe upon exiting search
+M.temp = { buffers = {} }
+
+---wipes all temporary buffers
+function M.temp:wipe()
+  for _, buffer in ipairs(self.buffers) do
+    pcall(vim.api.nvim_buf_delete, buffer, {})
+  end
+  self.buffers = {}
+end
+
 ---@class RipgrepNvimResultsHandler
----@field empty boolean indicates if no results have been found
-M.results = { empty = true }
+---@field current integer index indicating the current entry in list of entries
+---@field entries RipgrepNvimResultEntry[] list of entries aggregated from search results
+M.results = { current = 0, entries = {} }
+
+---creates a match item from raw result line
+---@param raw string raw line result from ripgrep
+---@return RipgrepNvimResultEntry
+local function create_entry(raw)
+  local filename, line = raw:match(require('ripgrep-nvim.config').options.format)
+  local add_to_temp = vim.fn.bufexists(filename) == 0
+  local buffer = vim.fn.bufadd(filename)
+  if add_to_temp then table.insert(M.temp.buffers, buffer) end
+  return { file = filename, buffer = buffer, line = tonumber(line) }
+end
+
+---sets the current entry in the results buffer to specified index
+---@param index integer target entry
+function M.results:set_current(index)
+  self.current = index
+  local entry = self.entries[self.current]
+  vim.api.nvim_win_set_cursor(id.float.results, { self.current, 0 })
+  vim.api.nvim_win_set_buf(id.float.preview, math.abs(entry.buffer))
+  vim.api.nvim_win_set_cursor(id.float.preview, { entry.line, 0 })
+end
 
 ---updates the buffer content with matches from search job
 ---@param matches string[] list of matches
 function M.results.update(matches)
   if vim.tbl_isempty(matches) then return end
 
-  local self = M.results
-  local start = -1
-  if self.empty then
-    self.empty = false
-    start = 0
+  local self, start = M.results, nil
+  local entries = vim.tbl_map(create_entry, matches)
+  vim.list_extend(self.entries, entries)
+  if self.current == 0 then
+    self:set_current(1)
+    start = 0 -- ensures the blank line in empty buffer is overwritten
   end
-
-  write(id.buffer.results, matches, start)
+  local lines = vim.tbl_map(function(e) return ('   %s [%d]'):format(e.file, e.line) end, entries)
+  write(id.buffer.results, lines, start or -1)
 end
 
----resets the buffer contents
+---selects the adjacent entry in the list of results
+---@param direction 1 | -1 +1 = next entry, -1 = previous entry
+function M.results:choose(direction)
+  if self.current > 0 then
+    self:set_current((self.current - 1 + direction + #self.entries) % #self.entries + 1)
+  end
+end
+
+---resets the results buffer state
 function M.results:reset()
+  vim.api.nvim_win_set_buf(id.float.preview, id.buffer.preview)
   write(id.buffer.results, {})
-  self.empty = true
+  self.current = 0
+  self.entries = {}
 end
 
 return M

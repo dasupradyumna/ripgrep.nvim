@@ -21,7 +21,12 @@
 ---@field command? RipgrepNvimUserOptionsCommand ripgrep command specification
 ---@field format? string regular expression to capture ripgrep output
 
--------------------------------- SEARCH OPTIONS --------------------------------
+------------------------------ SEARCH AND RESULTS ------------------------------
 
 ---@class RipgrepNvimSearchOptions
 ---@field directory? string path to the target directory for searching
+
+---@class RipgrepNvimResultEntry
+---@field file string filename with search match
+---@field buffer integer buffer ID of filename (positive if already existing, negative otherwise)
+---@field line integer line number of match in the matched buffer

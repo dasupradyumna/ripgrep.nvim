@@ -22,6 +22,8 @@ function Job:spawn(search_pattern, directory, update)
       if not data then return end
 
       data = vim.split(data:gsub('\r\n', '\n'), '\n', { trimempty = true })
+      -- FIX: produces duplicate results when user types quickly
+      --      (using an upvalue to job handle or implementing debounce)
       vim.defer_fn(function() update(data) end, 10)
     end,
   }, function() self.handle = nil end)

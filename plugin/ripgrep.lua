@@ -24,7 +24,8 @@ vim.api.nvim_create_autocmd('WinClosed', {
       float.prompt = nil
     elseif data.match == tostring(float.results) then
       float.results = nil
+    elseif data.match == tostring(float.preview) then
+      float.preview = nil
     end
-    -- XXX: preview window
   end,
 })

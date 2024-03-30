@@ -14,28 +14,20 @@ M.buffer = setmetatable({}, {
   __index = function(self, field)
     if not vim.list_contains({ 'prompt', 'results', 'preview' }, field) then return end
 
-    if field == 'prompt' then
-      self.prompt = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_create_autocmd('BufWipeout', {
-        desc = 'Reset the prompt buffer handle',
-        group = 'ripgrep_nvim',
-        buffer = self.prompt,
-        callback = function() self.prompt = nil end,
-      })
+    self[field] = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_create_autocmd('BufWipeout', {
+      desc = ('Reset the %s buffer handle'):format(field),
+      group = 'ripgrep_nvim',
+      buffer = self[field],
+      callback = function() self[field] = nil end,
+    })
+    vim.bo[self[field]].buftype = 'nofile'
 
+    if field == 'prompt' then
       vim.bo[self.prompt].buftype = 'prompt'
       vim.keymap.set('i', '<CR>', '', { buffer = self.prompt }) -- disable <Enter> prompt callback
-    elseif field == 'results' then
-      self.results = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_create_autocmd('BufWipeout', {
-        desc = 'Reset the results buffer handle',
-        group = 'ripgrep_nvim',
-        buffer = self.results,
-        callback = function() self.results = nil end,
-      })
-
-      vim.bo[self.results].buftype = 'nofile'
     elseif field == 'preview' then
+      -- TODO: add 'No entry selected' placeholder content
     end
 
     return self[field]
