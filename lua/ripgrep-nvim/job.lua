@@ -1,4 +1,4 @@
----------------------------------------- CORE FUNCTIONALITY ----------------------------------------
+---------------------------------------- EXTERNAL SEARCH JOB ---------------------------------------
 
 ---@class RipgrepNvimSearchJob
 ---@field handle? vim.SystemObj vim.system job handle (when active)

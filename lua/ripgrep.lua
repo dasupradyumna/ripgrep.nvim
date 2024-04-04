@@ -9,8 +9,9 @@ function M.setup(opts) require('ripgrep-nvim.config').apply(opts) end
 ---search for a custom string received from user input using specified search options
 ---@param opts? RipgrepNvimSearchOptions search options
 local function search(opts)
-  local handler = require 'ripgrep-nvim.ui.handler'
-  local layout = require 'ripgrep-nvim.ui.layout'
+  local state = require 'ripgrep-nvim.state'
+  local handlers = require 'ripgrep-nvim.handlers'
+  local ui = require 'ripgrep-nvim.ui'
   local util = require 'ripgrep-nvim.util'
 
   -- validate the search options
@@ -47,9 +48,9 @@ local function search(opts)
   opts = opts or {}
   opts.directory = opts.directory or vim.loop.cwd()
 
-  layout.open()
-  layout.set_title((' Search: %s '):format(opts.directory))
-  handler.prompt:setup(opts.directory)
+  state.directory = opts.directory
+  ui.open()
+  handlers.prompt:setup()
 end
 
 ---search for a string in the current working directory

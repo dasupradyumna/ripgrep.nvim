@@ -1,12 +1,16 @@
---------------------------------------- UI COMPONENT HANDLES ---------------------------------------
+--------------------------------------- INTERNAL SEARCH STATE --------------------------------------
 
 local M = {}
 
+---@type string path to the current search directory
+M.directory = ''
+
 ---@class RipgrepNvimUIBuffers
+---@field temp table<integer, boolean> list of temporary buffer IDs
 ---@field prompt? integer prompt buffer ID
 ---@field results? integer results buffer ID
 ---@field preview? integer preview buffer ID
-M.buffer = setmetatable({}, {
+M.buffer = setmetatable({ temp = {} }, {
   ---automatically create buffer if it does not exist
   ---@param self RipgrepNvimUIBuffers
   ---@param field 'prompt' | 'results' | 'preview' valid keys
@@ -25,9 +29,12 @@ M.buffer = setmetatable({}, {
 
     if field == 'prompt' then
       vim.bo[self.prompt].buftype = 'prompt'
-      vim.keymap.set('i', '<CR>', '', { buffer = self.prompt }) -- disable <Enter> prompt callback
+      -- disable <Enter> prompt callback
+      vim.keymap.set('i', '<CR>', '', { buffer = self.prompt })
+      -- disable window navigation
+      vim.keymap.set('i', '<C-W>', '', { buffer = self.prompt })
     elseif field == 'preview' then
-      -- TODO: add 'No entry selected' placeholder content
+      -- TODO: add placeholder content similar to Telescope
     end
 
     return self[field]
