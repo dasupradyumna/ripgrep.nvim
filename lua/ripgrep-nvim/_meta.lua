@@ -10,6 +10,7 @@
 ---@class RipgrepNvimConfig
 ---@field command RipgrepNvimConfigCommand ripgrep command specification
 ---@field format string regular expression to capture ripgrep output
+---@field prefix string prompt buffer prefix string
 
 --------------------------------- USER OPTIONS ---------------------------------
 
@@ -20,6 +21,7 @@
 ---@class RipgrepNvimUserOptions
 ---@field command? RipgrepNvimUserOptionsCommand ripgrep command specification
 ---@field format? string regular expression to capture ripgrep output
+---@field prefix? string prompt buffer prefix string
 
 ------------------------------ SEARCH AND RESULTS ------------------------------
 

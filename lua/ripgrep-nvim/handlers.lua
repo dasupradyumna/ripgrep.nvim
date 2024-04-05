@@ -1,7 +1,8 @@
 ------------------------------------------ SEARCH HANDLERS -----------------------------------------
 
-local state = require 'ripgrep-nvim.state'
+local config = require 'ripgrep-nvim.config'
 local job = require 'ripgrep-nvim.job'
+local state = require 'ripgrep-nvim.state'
 local ui = require 'ripgrep-nvim.ui'
 
 local M = {}
@@ -33,8 +34,7 @@ local function exit_search()
 end
 
 ---@class RipgrepNvimPromptHandler
----@field prefix string prompt prefix
-M.prompt = { prefix = ' Pattern: ' }
+M.prompt = {}
 
 ---setup the prompt buffer with autocommands and keymaps
 -- BUG: this is called every time search is started (sets up duplicate autocommands)
@@ -43,7 +43,7 @@ function M.prompt:setup()
   M.results:reset()
 
   -- set prompt prefix
-  vim.fn.prompt_setprompt(state.buffer.prompt, self.prefix)
+  vim.fn.prompt_setprompt(state.buffer.prompt, (' %s '):format(config.options.prefix))
 
   -- watch changes in prompt text
   vim.api.nvim_create_autocmd({ 'TextChangedI', 'TextChangedP' }, {
@@ -54,7 +54,7 @@ function M.prompt:setup()
       job:kill()
       M.results:reset()
 
-      local pattern = vim.api.nvim_get_current_line():sub(self.prefix:len() + 1)
+      local pattern = vim.api.nvim_get_current_line():sub(config.options.prefix:len() + 3)
       if pattern == '' then return end
 
       job:spawn(pattern, state.directory, M.results.update)

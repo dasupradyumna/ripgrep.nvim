@@ -18,6 +18,7 @@ local defaults = {
     },
   },
   format = '^(.+):(%d+):.+$',
+  prefix = 'Pattern:',
 }
 
 ---@type RipgrepNvimConfig currently active configuration
@@ -37,7 +38,7 @@ function M.apply(opts)
           return ('Setup options "%s" must be a table'):format(name)
         end
 
-        local valid_fields = { 'command', 'format' }
+        local valid_fields = { 'command', 'format', 'prefix' }
         for field, _ in pairs(value) do
           if not vim.list_contains(valid_fields, field) then
             return ('Unknown field "%s" in "%s". Valid fields: %s'):format(
@@ -50,6 +51,7 @@ function M.apply(opts)
       end,
     },
     { 'opts.format', { opts, 'format' }, { 'string', 'nil' } },
+    { 'opts.prefix', { opts, 'prefix' }, { 'string', 'nil' } },
     {
       'opts.command',
       { opts, 'command' },
