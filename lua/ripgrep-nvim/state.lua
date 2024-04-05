@@ -25,17 +25,8 @@ M.buffer = setmetatable({ temp = {} }, {
       buffer = self[field],
       callback = function() self[field] = nil end,
     })
-    vim.bo[self[field]].buftype = 'nofile'
-
-    if field == 'prompt' then
-      vim.bo[self.prompt].buftype = 'prompt'
-      -- disable <Enter> prompt callback
-      vim.keymap.set('i', '<CR>', '', { buffer = self.prompt })
-      -- disable window navigation
-      vim.keymap.set('i', '<C-W>', '', { buffer = self.prompt })
-    elseif field == 'preview' then
-      -- TODO: add placeholder content similar to Telescope
-    end
+    vim.bo[self[field]].buftype = 'nofile' -- XXX: does this need to moved to ftplugin folder?
+    vim.bo[self[field]].filetype = 'ripgrep_nvim_' .. field
 
     return self[field]
   end,

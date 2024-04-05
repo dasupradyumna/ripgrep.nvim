@@ -50,7 +50,7 @@ local function search(opts)
 
   state.directory = opts.directory
   ui.open()
-  handlers.prompt:setup()
+  handlers.setup()
 end
 
 ---search for a string in the current working directory
