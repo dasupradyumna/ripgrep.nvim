@@ -41,7 +41,7 @@ local function create_entry(raw)
   local file, line = raw:match(require('ripgrep-nvim.config').options.format)
   local add_to_temp = vim.fn.bufexists(file) == 0
   local buffer = vim.fn.bufadd(file)
-  if add_to_temp then state.buffer.temp[buffer] = true end
+  if add_to_temp then table.insert(state.buffer.temp, buffer) end
   return { file = file, buffer = buffer, line = tonumber(line) }
 end
 
@@ -78,6 +78,46 @@ function results:reset()
   self.entries = {}
 end
 
+---returns the current search string from the prompt
+local function get_prompt()
+  local pattern = vim.api.nvim_buf_get_lines(state.buffer.prompt, 0, 1, true)[1]
+  return pattern:sub(config.options.prefix:len() + 3)
+end
+
+---callback executed when the prompt changes
+function M.on_prompt_changed()
+  job:kill()
+  results:reset()
+
+  local pattern = get_prompt()
+  if pattern == '' then return end
+
+  job:spawn(pattern, state.directory, results.update)
+end
+
+local layout = {
+  ---@type 'prompt' | 'preview' UI components that are navigable
+  current = 'prompt',
+}
+
+---navigate the search UI components
+---@param where 'prompt' | 'preview' target UI component
+function layout.go_to(where)
+  if layout.current == 'preview' then
+    vim.cmd 'write' -- TODO: make this configurable
+    vim.api.nvim_set_current_win(state.float[where])
+    M.on_prompt_changed()
+    vim.cmd 'startinsert!'
+  elseif where == 'preview' then
+    if get_prompt() == '' then return end
+    vim.api.nvim_set_current_win(state.float.preview)
+    vim.cmd 'stopinsert'
+  end
+
+  layout.current = where
+end
+M.go_to = layout.go_to
+
 ---reset the prompt buffer state
 local function reset_prompt()
   write_to(state.buffer.prompt, {})
@@ -86,19 +126,24 @@ end
 
 ---resets the list of temporary buffers
 local function reset_temp_buffers()
-  for buffer, _ in pairs(state.buffer.temp) do
-    pcall(vim.api.nvim_buf_delete, buffer, {})
+  for _, buffer in ipairs(state.buffer.temp) do
+    pcall(vim.api.nvim_buf_delete, buffer, { force = true })
   end
   state.buffer.temp = {}
 end
 
 ---closes layout and resets internal state when search is exited
-function M.exit()
+function M.stop()
   ui.close()
   job:kill()
   reset_prompt()
   reset_temp_buffers()
-  vim.cmd.stopinsert()
+  if layout.current ~= 'preview' then vim.cmd 'stopinsert' end
+
+  -- delete all global keymaps
+  vim.keymap.del('n', '<LocalLeader>p')
+  vim.keymap.del('n', '<LocalLeader>q')
+  vim.keymap.set('n', '<C-W>', '')
 end
 
 ---selects the adjacent entry in the list of results
@@ -109,22 +154,15 @@ function M.choose_entry(direction)
   end
 end
 
----callback executed when the prompt changes
-function M.on_prompt_changed()
-  job:kill()
+---executed after opening UI
+function M.start()
   results:reset()
 
-  local pattern = vim.api.nvim_get_current_line():sub(config.options.prefix:len() + 3)
-  if pattern == '' then return end
+  vim.keymap.set('n', '<LocalLeader>p', function() layout.go_to 'prompt' end)
+  vim.keymap.set('n', '<LocalLeader>q', M.stop)
 
-  job:spawn(pattern, state.directory, results.update)
-end
-
----setup the prompt buffer with autocommands and keymaps
-function M.setup()
-  results:reset()
-
-  -- TODO: global keymap to move between prompt and preview
+  -- disable window navigation when UI is open
+  vim.keymap.set('n', '<C-W>', '')
 end
 
 return M

@@ -24,7 +24,7 @@ function M.open()
   cfg.title = (' Search: %s '):format(state.directory)
   state.float.prompt = vim.api.nvim_open_win(state.buffer.prompt, true, cfg)
   cfg.title = ''
-  vim.cmd.startinsert()
+  vim.cmd 'startinsert!'
 
   -- open results window without entering
   local width = math.floor(l_width * 0.4) - 1
@@ -39,9 +39,10 @@ end
 
 ---close the UI layout
 function M.close()
-  vim.api.nvim_win_close(state.float.prompt, true)
-  vim.api.nvim_win_close(state.float.results, true)
-  vim.api.nvim_win_close(state.float.preview, true)
+  for type, win in pairs(state.float) do
+    state.float[type] = nil
+    pcall(vim.api.nvim_win_close, win, true)
+  end
 end
 
 return M

@@ -16,16 +16,14 @@ vim.api.nvim_create_user_command(
 vim.api.nvim_create_augroup('ripgrep_nvim', { clear = true })
 
 vim.api.nvim_create_autocmd('WinClosed', {
-  desc = 'Reset the cached floating window handles',
+  desc = 'Stop search if any UI window is closed by external logic',
   group = 'ripgrep_nvim',
   callback = function(data)
-    local float = require('ripgrep-nvim.state').float
-    if data.match == tostring(float.prompt) then
-      float.prompt = nil
-    elseif data.match == tostring(float.results) then
-      float.results = nil
-    elseif data.match == tostring(float.preview) then
-      float.preview = nil
+    for _, winid in pairs(require('ripgrep-nvim.state').float) do
+      if data.match == tostring(winid) then
+        require('ripgrep-nvim.handlers').stop()
+        return
+      end
     end
   end,
 })

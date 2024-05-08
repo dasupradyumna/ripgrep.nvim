@@ -6,7 +6,7 @@ local M = {}
 M.directory = ''
 
 ---@class RipgrepNvimUIBuffers
----@field temp table<integer, boolean> list of temporary buffer IDs
+---@field temp integer[] list of temporary buffer IDs
 ---@field prompt? integer prompt buffer ID
 ---@field results? integer results buffer ID
 ---@field preview? integer preview buffer ID
