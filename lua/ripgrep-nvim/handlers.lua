@@ -143,7 +143,7 @@ function M.stop()
   -- delete all global keymaps
   vim.keymap.del('n', '<LocalLeader>p')
   vim.keymap.del('n', '<LocalLeader>q')
-  vim.keymap.set('n', '<C-W>', '')
+  vim.keymap.del('n', '<C-W>')
 end
 
 ---selects the adjacent entry in the list of results
