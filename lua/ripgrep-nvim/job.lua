@@ -16,12 +16,20 @@ function Job:spawn(search_pattern, directory, update)
   table.insert(command, 1, config_command.exe)
   vim.list_extend(command, { search_pattern, directory })
 
+  local incomplete_entry
   self.handle = vim.system(command, {
     stdout = function(err, data)
       if err then error(err) end -- backup to catch unexpected errors
       if not data then return end
 
+      -- if 'data' does not end with a '\n', then preserve the last element for the next iteration
+      local is_last_incomplete = not vim.endswith(data, '\n')
+      if incomplete_entry then
+        data = incomplete_entry .. data
+        incomplete_entry = nil
+      end
       data = vim.split(data:gsub('\r\n', '\n'), '\n', { trimempty = true })
+      if is_last_incomplete then incomplete_entry = table.remove(data) end
       -- FIX: produces duplicate results when user types quickly
       --      (using an upvalue to job handle or implementing debounce)
       vim.defer_fn(function() update(data) end, 10)
