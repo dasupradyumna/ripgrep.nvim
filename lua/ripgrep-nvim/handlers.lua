@@ -38,7 +38,7 @@ end
 ---@param raw string raw line result from ripgrep
 ---@return RipgrepNvimResultEntry
 local function create_entry(raw)
-  local file, line = raw:match(require('ripgrep-nvim.config').options.format)
+  local file, line = raw:match(config.options.format)
   local add_to_temp = vim.fn.bufexists(file) == 0
   local buffer = vim.fn.bufadd(file)
   if add_to_temp then table.insert(state.buffer.temp, buffer) end
@@ -92,7 +92,7 @@ function M.on_prompt_changed()
   local pattern = get_prompt()
   if pattern == '' then return end
 
-  job:spawn(pattern, state.directory, results.update)
+  job:spawn_debounced(pattern, results.update)
 end
 
 local layout = {

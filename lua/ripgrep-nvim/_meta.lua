@@ -7,10 +7,15 @@
 ---@field exe string path to the ripgrep executable
 ---@field args string[] command-line arguments to the ripgrep command
 
+---@class RipgrepNvimConfigDebounce
+---@field enable boolean whether to debounce changes to prompt
+---@field timeout integer debounce timeout in milliseconds
+
 ---@class RipgrepNvimConfig
 ---@field command RipgrepNvimConfigCommand ripgrep command specification
 ---@field format string regular expression to capture ripgrep output
 ---@field prefix string prompt buffer prefix string
+---@field debounce RipgrepNvimConfigDebounce debounce specification
 
 --------------------------------- USER OPTIONS ---------------------------------
 
@@ -18,10 +23,15 @@
 ---@field exe? string path to the ripgrep executable
 ---@field args? string[] command-line arguments to the ripgrep command
 
+---@class RipgrepNvimUserOptionsDebounce
+---@field enable? boolean whether to debounce changes to prompt
+---@field timeout? integer debounce timeout in milliseconds (ignored when disabled)
+
 ---@class RipgrepNvimUserOptions
 ---@field command? RipgrepNvimUserOptionsCommand ripgrep command specification
 ---@field format? string regular expression to capture ripgrep output
 ---@field prefix? string prompt buffer prefix string
+---@field debounce? RipgrepNvimUserOptionsDebounce debounce specification
 
 ------------------------------ SEARCH AND RESULTS ------------------------------
 

@@ -19,6 +19,10 @@ local defaults = {
   },
   format = '^(.+):(%d+):.+$',
   prefix = 'Pattern:',
+  debounce = {
+    enable = true,
+    timeout = 200,
+  },
 }
 
 ---@type RipgrepNvimConfig currently active configuration
@@ -78,7 +82,7 @@ function M.apply(opts)
       function(name, value)
         if type(value) == 'nil' then return end
         local msg = ('"%s" must be a list of strings'):format(name)
-        if vim.tbl_islist(value) then
+        if vim.tbl_islist(value) then -- CHECK: does vim.islist() work?
           for _, v in ipairs(value) do
             if type(v) ~= 'string' then return msg end
           end

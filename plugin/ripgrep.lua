@@ -27,3 +27,12 @@ vim.api.nvim_create_autocmd('WinClosed', {
     end
   end,
 })
+
+-- create job handler timer instance when plugin is loaded
+local job = require 'ripgrep-nvim.job'
+job.timer = vim.uv.new_timer()
+vim.api.nvim_create_autocmd('VimLeavePre', {
+  desc = 'Close the job handler timer instance on exiting neovim',
+  group = 'ripgrep_nvim',
+  callback = function() job.timer:close() end,
+})
