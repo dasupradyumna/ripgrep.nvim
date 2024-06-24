@@ -42,7 +42,7 @@ function M.apply(opts)
           return ('Setup options "%s" must be a table'):format(name)
         end
 
-        local valid_fields = { 'command', 'format', 'prefix' }
+        local valid_fields = { 'command', 'format', 'prefix', 'debounce' }
         for field, _ in pairs(value) do
           if not vim.list_contains(valid_fields, field) then
             return ('Unknown field "%s" in "%s". Valid fields: %s'):format(
@@ -91,6 +91,27 @@ function M.apply(opts)
         end
       end,
     },
+    {
+      'opts.debounce',
+      { opts, 'debounce' },
+      function(name, value)
+        if type(value) == 'nil' then return end
+        if type(value) ~= 'table' then return ('"%s" must be a table'):format(name) end
+
+        local valid_fields = { 'enable', 'timeout' }
+        for field, _ in pairs(value) do
+          if not vim.list_contains(valid_fields, field) then
+            return ('Unknown field "%s" in "%s". Valid fields: %s'):format(
+              field,
+              name,
+              vim.inspect(valid_fields)
+            )
+          end
+        end
+      end,
+    },
+    { 'opts.debounce.enable', { opts, 'debounce', 'enable' }, { 'boolean', 'nil' } },
+    { 'opts.debounce.timeout', { opts, 'debounce', 'timeout' }, { 'integer', 'nil' } },
   }
   if message then
     local lines = { 'ERROR: User options could not be applied; setup failed!' }

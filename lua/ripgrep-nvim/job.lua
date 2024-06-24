@@ -43,12 +43,13 @@ end
 ---@param pattern string target search pattern
 ---@param update fun(data: string[]) accepts update in the form of lines
 function Job:spawn_debounced(pattern, update)
-  if self.timer:is_active() then self.timer:stop() end
-  self.timer:start(
-    config.options.debounce.timeout,
-    0,
-    function() spawn_ripgrep_job(pattern, update) end
-  )
+  local function spawn() spawn_ripgrep_job(pattern, update) end
+  if config.options.debounce.enable then
+    if self.timer:is_active() then self.timer:stop() end
+    self.timer:start(config.options.debounce.timeout, 0, spawn)
+  else
+    spawn()
+  end
 end
 
 ---kills the job (when active) using SIGTERM
