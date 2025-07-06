@@ -33,10 +33,9 @@ local function spawn_ripgrep_job(pattern, update)
       data = vim.split(data:gsub('\r\n', '\n'), '\n', { trimempty = true })
       if is_last_incomplete then incomplete_entry = table.remove(data) end
       -- FIX: produces duplicate results when user types quickly
-      --      (using an upvalue to job handle or implementing debounce)
       vim.defer_fn(function() update(data) end, 10)
     end,
-  }, function() Job.handle = nil end)
+  })
 end
 
 ---debounces (optionally) the spawning of ripgrep search job
